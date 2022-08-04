@@ -31,7 +31,8 @@ AWS_SECRET = ENV['AWS_SECRET'] || "....."
 KMS_KEY_ID = ENV['KMS_KEY_ID'] || "....."
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/bionic64"
+  config.vm.box = "jeffnoxon/ubuntu-20.04-arm64"
+  config.vm.network :private_network
   #config.vm.box_version = "20190411.0.0"
 
   # set up the 3 node Vault Primary HA servers
