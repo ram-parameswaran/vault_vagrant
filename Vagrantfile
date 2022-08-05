@@ -31,13 +31,15 @@ AWS_SECRET = ENV['AWS_SECRET'] || "....."
 KMS_KEY_ID = ENV['KMS_KEY_ID'] || "....."
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/bionic64"
+  config.vm.box = "spox/ubuntu-arm"
+  #config.vm.box_version = "1.0.1"
+  config.vm.network :private_network
   #config.vm.box_version = "20190411.0.0"
 
   # set up the 3 node Vault Primary HA servers
   (1..3).each do |i|
-    config.vm.provider :virtualbox do |vb|
-#      vb.customize ["setextradata", :id, "VBoxInternal/Devices/VMMDev/0/Config/GetHostTimeDisabled", 1]
+    config.vm.provider "vmware_desktop" do |vmware|
+      vmware.allowlist_verified = true
     end
     config.vm.define "vault#{i}" do |v1|
       v1.vm.hostname = "v#{i}"
@@ -49,6 +51,9 @@ Vagrant.configure("2") do |config|
 
   # set up the 2 node Vault Primary DR servers
   (1..2).each do |i|
+    config.vm.provider "vmware_desktop" do |vmware|
+      vmware.allowlist_verified = true
+    end
     config.vm.define "vault-dr1#{i}" do |v1|
       v1.vm.hostname = "v-dr1#{i}"
       v1.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant"
