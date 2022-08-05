@@ -30,7 +30,7 @@ if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") &
   echo "Linking Vault build"
   ln -s /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
 else
-  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_linux_amd64.zip; then
+  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_darwin_arm64.zip; then
     unzip /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip -d /vagrant/vault_builds/"$VAULT_VERSION"/
     rm /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip
     ln -s /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
