@@ -15,7 +15,7 @@ apt-get update && apt-get -y install unzip curl gnupg software-properties-common
 
 echo "Installing Terraform"
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+sudo apt-add-repository "deb [arch=arm64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
 sudo apt-get update && sudo apt-get install terraform
 
 echo "Installing telegraf"
@@ -25,12 +25,14 @@ echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stabl
 sudo apt-get update && sudo apt-get install telegraf jq
 sudo systemctl start telegraf
 
-echo "Installing Vault enterprise version ..."
+echo "Installing Vault enterprise version ... $VAULT_VERSION "
 if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") && $(ls /vagrant/vault_builds | grep "$VAULT_VERSION") ]]; then
   echo "Linking Vault build"
   ln -s /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
 else
-  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_darwin_arm64.zip; then
+  # https://releases.hashicorp.com/vault/1.9.4+ent/vault_1.9.4+ent_linux_arm64.zip
+  echo "In else, which means i will fetch the vault installer from the interweb"
+  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_linux_arm64.zip ; then
     unzip /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip -d /vagrant/vault_builds/"$VAULT_VERSION"/
     rm /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip
     ln -s /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
