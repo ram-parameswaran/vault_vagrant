@@ -28,7 +28,7 @@ VAULT_REPLICA_SERVER_IPS = ENV['VAULT_REPLICA_SERVER_IPS'] || '"10.100.3.11", "1
 #Define AWS KMS seal details note: must be set in env vars
 AWS_KEY_ID = ENV['AWS_KEY_ID'] || "....."
 AWS_SECRET = ENV['AWS_SECRET'] || "....."
-KMS_KEY_ID = ENV['KMS_KEY_ID'] || "....."
+AWS_KMS_KEY_ID = ENV['AWS_KMS_KEY_ID'] || "....."
 
 Vagrant.configure("2") do |config|
   config.vm.box = "spox/ubuntu-arm"
@@ -45,7 +45,7 @@ Vagrant.configure("2") do |config|
       v1.vm.hostname = "v#{i}"
       v1.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant"
       v1.vm.network "private_network", ip: VAULT_HA_SERVER_IP_PREFIX+"#{i}", netmask:"255.0.0.0"
-      v1.vm.provision "shell", path: "scripts/setupPrimVaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'KMS_KEY_ID' => KMS_KEY_ID}
+      v1.vm.provision "shell", path: "scripts/setupPrimVaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'AWS_KMS_KEY_ID' => AWS_KMS_KEY_ID}
     end
   end
 
@@ -58,7 +58,7 @@ Vagrant.configure("2") do |config|
       v1.vm.hostname = "v-dr1#{i}"
       v1.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant"
       v1.vm.network "private_network", ip: VAULT_DR1_SERVER_IP_PREFIX+"#{i}", netmask:"255.0.0.0"
-      v1.vm.provision "shell", path: "scripts/setupDrVaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'KMS_KEY_ID' => KMS_KEY_ID}
+      v1.vm.provision "shell", path: "scripts/setupDrVaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'AWS_KMS_KEY_ID' => AWS_KMS_KEY_ID}
     end
   end
 
@@ -67,7 +67,7 @@ Vagrant.configure("2") do |config|
 #    config.vm.define "vault-dr2#{i}" do |v1|
 #      v1.vm.hostname = "v-dr2#{i}"
 #      v1.vm.network "private_network", ip: VAULT_DR2_SERVER_IP_PREFIX+"#{i}", netmask:"255.255.0.0"
-#      v1.vm.provision "shell", path: "scripts/setupDr2VaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'KMS_KEY_ID' => KMS_KEY_ID}
+#      v1.vm.provision "shell", path: "scripts/setupDr2VaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'AWS_KMS_KEY_ID' => AWS_KMS_KEY_ID}
 #    end
 #  end
 
@@ -76,7 +76,7 @@ Vagrant.configure("2") do |config|
 #    config.vm.define "vault-pr#{i}" do |v1|
 #      v1.vm.hostname = "v-pr#{i}"
 #      v1.vm.network "private_network", ip: VAULT_REPLICA_SERVER_IP_PREFIX+"#{i}", netmask:"255.255.0.0"
-#      v1.vm.provision "shell", path: "scripts/setupRepVaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'KMS_KEY_ID' => KMS_KEY_ID}
+#      v1.vm.provision "shell", path: "scripts/setupRepVaultServer.sh", env: {'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}", 'AWS_KEY_ID' => AWS_KEY_ID, 'AWS_SECRET' => AWS_SECRET, 'AWS_KMS_KEY_ID' => AWS_KMS_KEY_ID}
 #    end
 #  end
 
