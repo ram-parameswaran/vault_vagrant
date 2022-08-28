@@ -14,15 +14,30 @@ echo "Installing dependencies ..."
 apt-get update && apt-get -y install unzip curl gnupg software-properties-common
 
 echo "Installing Terraform"
-curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-sudo apt-add-repository "deb [arch=arm64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-sudo apt-get update && sudo apt-get install terraform
+echo "check OS architecure" ; dpkg --print-architecture
+
+OS_ARCHITECTURE=$(dpkg --print-architecture)
+arm64="arm64"
+
+if [ "$OS_ARCHITECTURE" = "$arm64" ];
+then
+  cd /root 
+  wget https://releases.hashicorp.com/terraform/1.2.7/terraform_1.2.7_linux_arm64.zip
+  unzip terraform_1.2.7_linux_arm64.zip
+  mv terraform /bin/
+  rm -rf terraform_1.2.7_linux_arm64.zip
+  terraform -version
+else
+  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+  sudo apt-add-repository "deb [OS_ARCHITECTURE=arm64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+  sudo apt-get -y update && sudo apt-get -y install terraform
+fi
 
 echo "Installing telegraf"
 curl -s https://repos.influxdata.com/influxdb.key | sudo apt-key add -
 source /etc/lsb-release
 echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
-sudo apt-get update && sudo apt-get install telegraf jq
+sudo apt-get -y update && sudo apt-get -y install telegraf jq
 sudo systemctl start telegraf
 
 echo "Installing Vault enterprise version ... $VAULT_VERSION "
@@ -32,7 +47,7 @@ if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") &
 else
   # https://releases.hashicorp.com/vault/1.9.4+ent/vault_1.9.4+ent_linux_arm64.zip
   echo "In else, which means i will fetch the vault installer from the interweb"
-  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_linux_arm64.zip ; then
+  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_linux_$OS_ARCHITECTURE.zip ; then
     unzip /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip -d /vagrant/vault_builds/"$VAULT_VERSION"/
     rm /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip
     cp -r /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
@@ -64,7 +79,7 @@ echo "Creating Vault configuration ..."
 echo 'export VAULT_ADDR="https://localhost:8200"' | tee /etc/profile.d/vault.sh
 
 NETWORK_INTERFACE=$(ls -1 /sys/class/net | grep -v lo | sort -r | head -n 1)
-IP_ADDRESS=$(ip address show $NETWORK_INTERFACE | awk '{print $2}' | egrep -o '([0-9]+\.){3}[0-9]+')
+IP_ADDRESS=$(ip address show et$NETWORK_INTERFACE | awk '{print $2}' | egrep -o '([0-9]+\.){3}[0-9]+')
 HOSTNAME=$(hostname -s)
 
 tee /etc/vault/vault.hcl << EOF
