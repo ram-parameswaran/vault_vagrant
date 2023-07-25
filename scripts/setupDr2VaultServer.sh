@@ -6,9 +6,9 @@ export PATH=$PATH:/usr/local/bin
 VAULT_VERSION="$VAULT_VER+ent"
 echo "$VAULT_VERSION"
 
-echo "$AWS_KEY_ID"
-echo "$AWS_SECRET"
-echo "$KMS_KEY_ID"
+echo "<REDACTED>"
+echo "<REDACTED>"
+echo "<REDACTED>"
 
 echo "Installing dependencies ..."
 apt-get -y install unzip curl
@@ -24,19 +24,19 @@ sudo systemctl start telegraf
 echo "Installing Vault enterprise version ..."
 if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") && $(ls /vagrant/vault_builds | grep "$VAULT_VERSION") ]]; then
   echo "Linking Vault build"
-  ln -s /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
+  cp -r /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
 else
-  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_linux_amd64.zip; then
+  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_darwin_arm64.zip; then
     unzip /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip -d /vagrant/vault_builds/"$VAULT_VERSION"/
     rm /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip
-    ln -s /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
+    cp -r /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
   else
     echo "####### Vault version not found #########"
   fi
 fi
 
 echo "Creating Vault service account ..."
-useradd -r -d /etc/vault -s /bin/false vault
+useradd -r -d /etc/vault -s /bin/sh vault
 
 echo "Creating directory structure ..."
 mkdir -p /etc/vault/pki
@@ -92,7 +92,7 @@ seal "awskms" {
   region     = "ap-southeast-2"
   access_key = "$AWS_KEY_ID"
   secret_key = "$AWS_SECRET"
-  kms_key_id = "$KMS_KEY_ID"
+  kms_key_id = "$AWS_KMS_KEY_ID"
 }
 telemetry {
   dogstatsd_addr = "localhost:8125"

@@ -9,22 +9,26 @@ echo "Installing dependencies ..."
 apt-get -y install unzip curl
 
 echo "Installing Consul Enterprise version ..."
-CONSUL_VERSION="$CONSUL_VER+ent"
+CONSUL_VERSION="1.9.4+ent"
 echo "$CONSUL_VERSION"
+
+OS_ARCHITECTURE=$(dpkg --print-architecture)
+arm64="arm64"
+
 if [[ $(curl -s https://releases.hashicorp.com/consul/ | grep "$CONSUL_VERSION") && $(ls /vagrant/consul_builds | grep "$CONSUL_VERSION") ]]; then
-  ln -s /vagrant/consul_builds/"$CONSUL_VERSION"/consul /usr/local/bin/consul;
+  cp -r /vagrant/consul_builds/"$CONSUL_VERSION"/consul /usr/local/bin/consul;
 else
-  if curl -s -f -o /vagrant/consul_builds/"$CONSUL_VERSION"/consul.zip --create-dirs https://releases.hashicorp.com/consul/"$CONSUL_VERSION"/consul_"$CONSUL_VERSION"_linux_amd64.zip; then
+  if curl -s -f -o /vagrant/consul_builds/"$CONSUL_VERSION"/consul.zip --create-dirs https://releases.hashicorp.com/consul/"$CONSUL_VERSION"/consul_"$CONSUL_VERSION"_linux_"$OS_ARCHITECTURE".zip; then
     unzip /vagrant/consul_builds/"$CONSUL_VERSION"/consul.zip -d /vagrant/consul_builds/"$CONSUL_VERSION"/
     rm /vagrant/consul_builds/"$CONSUL_VERSION"/consul.zip
-    ln -s /vagrant/consul_builds/"$CONSUL_VERSION"/consul /usr/local/bin/consul;
+    cp -r /vagrant/consul_builds/"$CONSUL_VERSION"/consul /usr/local/bin/consul;
   else
     echo "####### Consul version not found #########"
   fi
 fi
 
 echo "Creating Consul service account ..."
-useradd -r -d /etc/consul -s /bin/false consul
+useradd -r -d /etc/consul -s /bin/sh consul
 
 echo "Creating Consul directory structure ..."
 mkdir -p /etc/consul/{config.d,pki}
@@ -46,15 +50,14 @@ cat > /etc/consul/config.d/consul.hcl << EOF
 {
   "server": true,
   "node_name": "${HOSTNAME}",
-  "datacenter": "${VAULT_DC}",
+  "datacenter": "${HOSTNAME}",
   "data_dir": "/var/run/consul/data",
   "bind_addr": "0.0.0.0",
   "client_addr": "0.0.0.0",
   "advertise_addr": "${IP_ADDRESS}",
-  "bootstrap_expect": 3,
-  "retry_join": [${VAULT_HA_SERVER_IPS}],
+  "bootstrap_expect": 1,
   "ui": true,
-  "log_level": "DEBUG",
+  "log_level": "TRACE",
   "enable_syslog": true,
   "acl_enforce_version_8": false
 }
