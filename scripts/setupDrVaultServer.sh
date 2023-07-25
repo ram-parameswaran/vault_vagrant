@@ -69,39 +69,41 @@ storage "raft" {
   path = "/opt/vault"
   node_id = "${HOST}"
 
-  retry_join {
-    leader_api_addr = "https://10.100.2.11:8200"
-  }
+  #retry_join {
+   # leader_api_addr = "https://10.100.2.11:8200"
+  #}
 
-  retry_join {
-    leader_api_addr = "https://10.100.2.12:8200"
-  }
+  #retry_join {
+   # leader_api_addr = "https://10.100.2.12:8200"
+  #}
 }
 
 listener "tcp" {
   address       = "0.0.0.0:8200"
-  tls_disable   = "false"
-  tls_cert_file = "/vagrant/certs/vault-server-2.crt"
-  tls_key_file  = "/vagrant/certs/vault-server-2.key"
-  tls_client_ca_file = "/vagrant/certs/ca.pem"
-  telemetry {
-    unauthenticated_metrics_access = true
-  }
+  tls_disable   = "true"
+  #tls_cert_file = "/vagrant/certs/vault-server-2.crt"
+  #tls_key_file  = "/vagrant/certs/vault-server-2.key"
+  #tls_client_ca_file = "/vagrant/certs/ca.pem"
+  #telemetry {
+   # unauthenticated_metrics_access = true
+  #}
 }
+
 # setup as per https://www.vaultproject.io/docs/configuration/seal/awskms#key-rotation
 # need to export your aws key and secret to AWS_KEY_ID and AWS_SECRET respectivly
-seal "awskms" {
-  region     = "ap-southeast-2"
-  access_key = "$AWS_KEY_ID"
-  secret_key = "$AWS_SECRET"
-  kms_key_id = "$AWS_KMS_KEY_ID"
-}
-telemetry {
-  dogstatsd_addr = "localhost:8125"
-  disable_hostname = true
-  enable_hostname_label = false
-  prometheus_retention_time = "0h"
-}
+
+#seal "awskms" {
+ # region     = "ap-southeast-2"
+  #access_key = "$AWS_KEY_ID"
+  #secret_key = "$AWS_SECRET"
+  #kms_key_id = "$AWS_KMS_KEY_ID"
+#}
+#telemetry {
+ # dogstatsd_addr = "localhost:8125"
+  #disable_hostname = true
+  #enable_hostname_label = false
+  #prometheus_retention_time = "0h"
+#}
 EOF
 
 chown root:vault /etc/vault/vault.hcl
@@ -172,12 +174,16 @@ systemctl daemon-reload
 systemctl enable vault
 systemctl restart vault
 
-### Init vault server
+### Init vault server v-dr1#{i}
+if [ "$HOSTNAME" = "v-dr11" ]; then
 echo testing vault up
+export VAULT_ADDR="http://127.0.0.1:8200"
+export VAULT_CLUSTER_ADDR="http://127.0.0.1:8201"
 vault status
 while [ $? -ne 2 ]; do echo "still testing"; vault status; done
 vault operator init -key-shares=1 -key-threshold=1 > /home/vagrant/VaultCreds.txt
 vault status
+fi
 
 ## print servers IP address
 echo "The IP of the host $(hostname) is $(hostname -I | awk '{print $2}')"

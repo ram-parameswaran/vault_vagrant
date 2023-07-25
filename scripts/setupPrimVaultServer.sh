@@ -3,49 +3,62 @@
 export PATH=$PATH:/usr/local/bin
 
 #installing vault
-VAULT_VERSION="$VAULT_VER+ent"
+VAULT_VERSION="$VAULT_VER"
 echo "$VAULT_VERSION"
 
+#installing terraform
+TERRAFORM_VERSION="1.4.4"
+echo "$TERRAFORM_VERSION"
+
+#if installing consul
+STORAGE=$STORAGE_CONSUL
+echo $STORAGE
+
 echo "<REDACTED>"
 echo "<REDACTED>"
 echo "<REDACTED>"
+
+echo "Setting Timezone to local TZ"
+sudo timedatectl set-timezone Australia/Melbourne
 
 echo "Installing dependencies ..."
-apt-get update && apt-get -y install unzip curl gnupg software-properties-common
+apt-get update 
+apt-get -y install unzip curl gnupg software-properties-common 
+apt-get -y install jq
 
 echo "Installing Terraform"
+#https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_arm64.zip
 echo "check OS architecure" ; dpkg --print-architecture
 
 OS_ARCHITECTURE=$(dpkg --print-architecture)
 arm64="arm64"
 
-if [ "$OS_ARCHITECTURE" = "$arm64" ];
-then
-  cd /root 
-  wget https://releases.hashicorp.com/terraform/1.2.7/terraform_1.2.7_linux_arm64.zip
-  unzip terraform_1.2.7_linux_arm64.zip
-  mv terraform /bin/
-  rm -rf terraform_1.2.7_linux_arm64.zip
-  terraform -version
-else
-  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-  sudo apt-add-repository "deb [OS_ARCHITECTURE=arm64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-  sudo apt-get -y update && sudo apt-get -y install terraform
-fi
+echo "Installing terraform version ... $TERRAFORM_VERSION "
+cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
 
-echo "Installing telegraf"
-curl -s https://repos.influxdata.com/influxdb.key | sudo apt-key add -
-source /etc/lsb-release
-echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
-sudo apt-get -y update && sudo apt-get -y install telegraf jq
-sudo systemctl start telegraf
+#if [[ $(curl -s https://releases.hashicorp.com/terraform/ | grep "$TERRAFORM_VERSION") && $(ls /vagrant/terraform_builds | grep -Fx "$TERRAFORM_VERSION") ]]; then
+#  echo "Linking terraform build"
+#  cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
+#else
+  # https://releases.hashicorp.com/vault/1.9.4+ent/vault_1.9.4+ent_linux_arm64.zip
+  # https://releases.hashicorp.com/vault/1.11.2+ent/vault_1.11.2+ent_linux_arm64.zip
+  echo "In else, which means i will fetch the terraform installer from the interweb"
+  #if curl -s -f -o /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip --create-dirs https://releases.hashicorp.com/terraform/"$TERRAFORM_VERSION"/terraform_"$TERRAFORM_VERSION"_linux_$OS_ARCHITECTURE.zip ; then
+  #  unzip /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip -d /vagrant/terraform_builds/"$TERRAFORM_VERSION"/
+  #  rm /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip
+  #  cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
+  #else
+  #  echo "####### terraform version not found #########"
+  #fi
+#fi
 
 echo "Installing Vault enterprise version ... $VAULT_VERSION "
-if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") && $(ls /vagrant/vault_builds | grep "$VAULT_VERSION") ]]; then
+if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") && $(ls /vagrant/vault_builds | grep -Fx "$VAULT_VERSION") ]]; then
   echo "Linking Vault build"
   cp -r /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
 else
   # https://releases.hashicorp.com/vault/1.9.4+ent/vault_1.9.4+ent_linux_arm64.zip
+  # https://releases.hashicorp.com/vault/1.11.2+ent/vault_1.11.2+ent_linux_arm64.zip
   echo "In else, which means i will fetch the vault installer from the interweb"
   if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_linux_$OS_ARCHITECTURE.zip ; then
     unzip /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip -d /vagrant/vault_builds/"$VAULT_VERSION"/
@@ -75,34 +88,67 @@ sudo cp /vagrant/certs/ca.pem /etc/ssl/certs/ca.pem
 sudo cat /vagrant/certs/ca.pem >> /etc/ssl/certs/ca-certificates.crt
 sudo update-ca-certificates --fresh
 
-echo "Creating Vault configuration ..."
-echo 'export VAULT_ADDR="https://localhost:8200"' | tee /etc/profile.d/vault.sh
-
-NETWORK_INTERFACE=$(ls -1 /sys/class/net | grep -v lo | sort -r | head -n 1)
-IP_ADDRESS=$(ip address show et$NETWORK_INTERFACE | awk '{print $2}' | egrep -o '([0-9]+\.){3}[0-9]+')
+NETWORK_INTERFACE=$(ls -1 /sys/class/net | grep -v lo | head -n 1)
+#NETWORK_INTERFACE=$(ls -1 /sys/class/net | grep -v lo | sort -r | head -n 1)
+echo "NETWORK_INTERFACE = $INTERFACE "
+IP_ADDRESS=$(ip address show $NETWORK_INTERFACE | awk '{print $2}' | egrep -o '([0-9]+\.){3}[0-9]+')
+echo "IP_ADDRESS = $IP_ADDRESS "
 HOSTNAME=$(hostname -s)
+echo "HOSTNAME = $HOSTNAME"
 
+echo "Creating Vault configuration ..."
+echo 'export VAULT_ADDR="http://127.0.0.1:8200" ; export VAULT_RAFT_AUTOPILOT_DISABLE=true' | tee /etc/profile.d/vault.sh
+
+if [[ "$STORAGE" == "consul" ]]; then
 tee /etc/vault/vault.hcl << EOF
-api_addr = "https://${IP_ADDRESS}:8200"
-cluster_addr = "https://${IP_ADDRESS}:8201"
-ui = true
-# raw_storage_endpoint = "true"
+api_addr = "http://${IP_ADDRESS}:8200"
+cluster_addr = "http://${IP_ADDRESS}:8201"
+ui = true 
+log_level="trace"
+
 license_path = "/vagrant/.license"
+
+#storage "raft" {
+#  path = "/opt/vault"
+#  #node_id = "${HOST}"
+#}
+
+storage "consul" {
+  address = "127.0.0.1:8500"
+  path    = "vault/"
+}
+listener "tcp" {
+  address       = "0.0.0.0:8200"
+  tls_disable   = "true"
+  cluster_address = "0.0.0.0:8201"
+  #tls_cert_file = "/vagrant/certs/vault-server-1.crt"
+  #tls_key_file  = "/vagrant/certs/vault-server-1.key"
+  #tls_client_ca_file = "/vagrant/certs/ca.pem"
+  #telemetry {
+   #unauthenticated_metrics_access = true
+  #}
+}
+# setup as per https://www.vaultproject.io/docs/configuration/seal/awskms#key-rotation
+# need to export your aws key and secret to AWS_KEY_ID and AWS_SECRET respectivly
+#seal "awskms" {
+# region     = "ap-southeast-2"
+# access_key = "$AWS_KEY_ID"
+# secret_key = "$AWS_SECRET"
+# kms_key_id = "$AWS_KMS_KEY_ID"
+#}
+EOF
+else
+tee /etc/vault/vault.hcl << EOF
+api_addr = "http://${IP_ADDRESS}:8200"
+cluster_addr = "http://${IP_ADDRESS}:8201"
+ui = true
+log_level="trace"
+
+license_path = "/vagrant/.license"
+
 storage "raft" {
   path = "/opt/vault"
-  node_id = "${HOST}"
-
-  retry_join {
-    leader_api_addr = "https://10.100.1.11:8200"
-  }
-
-  retry_join {
-    leader_api_addr = "https://10.100.1.12:8200"
-  }
-
-  retry_join {
-    leader_api_addr = "https://10.100.1.13:8200"
-  }
+  #node_id = "${HOST}"
 }
 
 #storage "consul" {
@@ -111,29 +157,25 @@ storage "raft" {
 #}
 listener "tcp" {
   address       = "0.0.0.0:8200"
-  tls_disable   = "false"
-  tls_cert_file = "/vagrant/certs/vault-server-1.crt"
-  tls_key_file  = "/vagrant/certs/vault-server-1.key"
-  tls_client_ca_file = "/vagrant/certs/ca.pem"
-  telemetry {
-    unauthenticated_metrics_access = true
-  }
+  tls_disable   = "true"
+  cluster_address = "0.0.0.0:8201"
+  #tls_cert_file = "/vagrant/certs/vault-server-1.crt"
+  #tls_key_file  = "/vagrant/certs/vault-server-1.key"
+  #tls_client_ca_file = "/vagrant/certs/ca.pem"
+  #telemetry {
+   #unauthenticated_metrics_access = true
+  #}
 }
 # setup as per https://www.vaultproject.io/docs/configuration/seal/awskms#key-rotation
 # need to export your aws key and secret to AWS_KEY_ID and AWS_SECRET respectivly
-seal "awskms" {
-  region     = "ap-southeast-2"
-  access_key = "$AWS_KEY_ID"
-  secret_key = "$AWS_SECRET"
-  kms_key_id = "$AWS_KMS_KEY_ID"
-}
-telemetry {
-  dogstatsd_addr = "localhost:8125"
-  disable_hostname = true
-  enable_hostname_label = false
-  prometheus_retention_time = "0h"
-}
+#seal "awskms" {
+# region     = "ap-southeast-2"
+# access_key = "$AWS_KEY_ID"
+# secret_key = "$AWS_SECRET"
+# kms_key_id = "$AWS_KMS_KEY_ID"
+#}
 EOF
+fi
 
 chown root:vault /etc/vault/vault.hcl
 chmod 0640 /etc/vault/vault.hcl
@@ -148,7 +190,7 @@ ConditionFileNotEmpty=/etc/vault/vault.hcl
 User=vault
 Group=vault
 PIDFile=/var/run/vault/vault.pid
-ExecStart=/usr/local/bin/vault server -config=/etc/vault/vault.hcl -log-level=trace
+ExecStart=/usr/local/bin/vault server -config=/etc/vault/vault.hcl
 StandardOutput=file:/var/log/vault/vault.log
 StandardError=file:/var/log/vault/vault.log
 ExecReload=/bin/kill -HUP $MAINPID
@@ -204,12 +246,33 @@ systemctl enable vault
 systemctl restart vault
 
 ### Init vault server
-echo testing vault up
-vault status
-while [ $? -ne 2 ]; do echo "still testing"; vault status; done
-vault operator init -key-shares=1 -key-threshold=1 > /home/vagrant/VaultCreds.txt
-vault status
+#if [[ "$HOSTNAME" == "v1" ]]; then
+  echo testing vault up
+  export VAULT_ADDR="http://127.0.0.1:8200"
+  export VAULT_CLUSTER_ADDR="http://127.0.0.1:8201"
+  vault status
+  sleep 10
+  sudo systemctl restart vault
+  sleep 20
+  #while [ $? -ne 2 ]; do echo "still testing"; vault status; done
+  vault operator init -key-shares=1 -key-threshold=1 -format=json > /home/vagrant/VaultCreds.json
+  sleep 10
+  vault status
+  sleep 5
+  cat /home/vagrant/VaultCreds.json
+  export VAULT_UNSEAL_KEY=$(cat /home/vagrant/VaultCreds.json | jq -r .unseal_keys_b64[0])
+  vault operator unseal $VAULT_UNSEAL_KEY
+  #cp -r /home/vagrant/VaultCreds.json /vagrant/VaultCreds.json.${IP_ADDRESS}
+  sleep 5
+  echo 'export VAULT_ADDR="http://127.0.0.1:8200" ; export VAULT_UNSEAL_KEY=$(cat /home/vagrant/VaultCreds.json | jq -r .unseal_keys_b64[0]) ; export VAULT_RAFT_AUTOPILOT_DISABLE=true ; export VAULT_TOKEN=$(cat /home/vagrant/VaultCreds.json | jq -r .root_token)' | tee /etc/profile.d/vault.sh
+  export VAULT_TOKEN=$(cat /home/vagrant/VaultCreds.json | jq -r .root_token)
+  vault login $(cat /home/vagrant/VaultCreds.json | jq -r .root_token)
+  vault status
+#else
+ #echo "HOSTNAME = $HOSTNAME vault being launched as a follower"
+ #vault status
+#fi
 
 
 ## print servers IP address
-echo "The IP of the host $(hostname) is $(hostname -I | awk '{print $2}')"
+echo "The IP of the host $(hostname) is $(hostname -I | awk '{print $1}')"
