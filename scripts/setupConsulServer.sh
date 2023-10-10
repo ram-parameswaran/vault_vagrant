@@ -9,7 +9,7 @@ echo "Installing dependencies ..."
 apt-get -y install unzip curl
 
 echo "Installing Consul Enterprise version ..."
-CONSUL_VERSION="1.9.4+ent"
+CONSUL_VERSION="$CONSUL_VER"
 echo "$CONSUL_VERSION"
 
 OS_ARCHITECTURE=$(dpkg --print-architecture)
