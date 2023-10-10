@@ -8,7 +8,7 @@ CONSUL_VERSION - Specify the version of Consul that needs to be spun up.  - http
 VAULT_VER - Specify the version of Consul that needs to be spun up - Should match the folder under - https://releases.hashicorp.com/vault/
 
 ### to spin up a vault node with Consul as the storage backend
-VAULT_NUM_INSTANCES=1 CONSUL_VERSION="1.13.0+ent" VAULT_VER="1.15.0+ent" STORAGE=consul vagrant up
+VAULT_NUM_INSTANCES=1 CONSUL_VER="1.13.0+ent" VAULT_VER="1.15.0+ent" STORAGE=consul vagrant up
 
 ### to spin up a vault node with Raft as the storage backend
 VAULT_NUM_INSTANCES=1 VAULT_VER="1.15.0+ent" vagrant up
