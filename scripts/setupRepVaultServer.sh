@@ -62,7 +62,7 @@ tee /etc/vault/vault.hcl << EOF
 api_addr = "https://${IP_ADDRESS}:8200"
 cluster_addr = "https://${IP_ADDRESS}:8201"
 ui = true
-license_path = "/vagrant/.license"
+license_path = "/vagrant/vault.license"
 storage "raft" {
   path = "/opt/vault"
   node_id = "${HOST}"
