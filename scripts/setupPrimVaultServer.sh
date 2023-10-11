@@ -32,24 +32,24 @@ OS_ARCHITECTURE=$(dpkg --print-architecture)
 arm64="arm64"
 
 echo "Installing terraform version ... $TERRAFORM_VERSION "
-cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
-echo "Installed terraform successfully, version ... $TERRAFORM_VERSION "
 
-#if [[ $(curl -s https://releases.hashicorp.com/terraform/ | grep "$TERRAFORM_VERSION") && $(ls /vagrant/terraform_builds | grep -Fx "$TERRAFORM_VERSION") ]]; then
-#  echo "Linking terraform build"
-#  cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
-#else
-  # https://releases.hashicorp.com/vault/1.9.4+ent/vault_1.9.4+ent_linux_arm64.zip
-  # https://releases.hashicorp.com/vault/1.11.2+ent/vault_1.11.2+ent_linux_arm64.zip
-  #echo "In else, which means i will fetch the terraform installer from the interweb"
-  #if curl -s -f -o /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip --create-dirs https://releases.hashicorp.com/terraform/"$TERRAFORM_VERSION"/terraform_"$TERRAFORM_VERSION"_linux_$OS_ARCHITECTURE.zip ; then
-  #  unzip /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip -d /vagrant/terraform_builds/"$TERRAFORM_VERSION"/
-  #  rm /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip
-  #  cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
-  #else
-  #  echo "####### terraform version not found #########"
-  #fi
-#fi
+if [[ $(curl -s https://releases.hashicorp.com/terraform/ | grep "$TERRAFORM_VERSION") && $(ls /vagrant/terraform_builds | grep -Fx "$TERRAFORM_VERSION") ]]; then
+  echo "Linking terraform build"
+  cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
+  echo "Installed terraform successfully, version ... $TERRAFORM_VERSION "
+  terraform version
+else
+  echo "In else, which means i will fetch the terraform installer from the interweb"
+  if curl -s -f -o /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip --create-dirs https://releases.hashicorp.com/terraform/"$TERRAFORM_VERSION"/terraform_"$TERRAFORM_VERSION"_linux_$OS_ARCHITECTURE.zip ; then
+    unzip /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip -d /vagrant/terraform_builds/"$TERRAFORM_VERSION"/
+    rm /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip
+    cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
+    terraform version
+    echo "Installed terraform successfully, version ... $TERRAFORM_VERSION "
+  else
+    echo "####### terraform version not found #########"
+  fi
+fi
 
 echo "Installing Vault enterprise version ... $VAULT_VERSION "
 if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") && $(ls /vagrant/vault_builds | grep -Fx "$VAULT_VERSION") ]]; then
