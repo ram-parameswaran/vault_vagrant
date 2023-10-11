@@ -37,9 +37,9 @@ Vagrant.configure("2") do |config|
       v1.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant"
       #v1.vm.network "private_network", type: "dhcp"
       if (STORAGE=="consul") then
-         v1.vm.provision "shell", path: "scripts/setupConsulServer.sh", env: {'TF_VER' => TF_VER,'CONSUL_VER' => CONSUL_VER, 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
+         v1.vm.provision "shell", path: "scripts/setupConsulServer.sh", env: {'STORAGE_CONSUL' => STORAGE ,'TF_VER' => TF_VER,'CONSUL_VER' => CONSUL_VER, 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
       end
-      v1.vm.provision "shell", path: "scripts/setupPrimVaultServer.sh", env: { 'TF_VER' => TF_VER, 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
+      v1.vm.provision "shell", path: "scripts/setupPrimVaultServer.sh", env: {'STORAGE_CONSUL' => STORAGE , 'TF_VER' => TF_VER, 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
     end
   end
 
