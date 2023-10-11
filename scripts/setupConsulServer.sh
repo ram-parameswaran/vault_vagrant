@@ -49,6 +49,9 @@ HOSTNAME=$(hostname -s)
 
 echo "IP Address is ${IP_ADDRESS}  Host Name is ${HOSTNAME}"
 
+echo "Creating Consul configuration ..."
+echo ' export CONSUL_LICENSE_PATH=/vagrant/consul.license ' | tee /etc/profile.d/consul.sh
+
 cat > /etc/consul/config.d/consul.hcl << EOF
 {
   "server": true,
