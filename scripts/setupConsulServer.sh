@@ -35,6 +35,9 @@ mkdir -p /etc/consul/{config.d,pki}
 chown -R root:consul /etc/consul
 chmod -R 0750 /etc/consul
 
+echo "Creating Consul configuration ..."
+echo ' export CONSUL_LICENSE_PATH=/vagrant/consul.license '
+
 mkdir /var/{lib,log}/consul
 chown consul:consul /var/{lib,log}/consul
 chmod 0750 /var/{lib,log}/consul
