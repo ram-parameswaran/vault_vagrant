@@ -6,8 +6,11 @@
 # Define Vault version
 VAULT_VER = ENV['VAULT_VER'] || "1.15.0+ent"
 
-# Define COnsul version
+# Define Consul version
 CONSUL_VER = ENV['CONSUL_VER'] || "1.16.2+ent"
+
+# Define Terraform version
+TF_VER = ENV['TF_VER'] || "1.6.1"
 
 VAULT_NUM_INSTANCES = ENV['VAULT_NUM_INSTANCES'] || '1'
 STORAGE = ENV['STORAGE'] || ''
@@ -34,9 +37,9 @@ Vagrant.configure("2") do |config|
       v1.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant"
       #v1.vm.network "private_network", type: "dhcp"
       if (STORAGE=="consul") then
-         v1.vm.provision "shell", path: "scripts/setupConsulServer.sh", env: {'CONSUL_VER' => CONSUL_VER, 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
+         v1.vm.provision "shell", path: "scripts/setupConsulServer.sh", env: {'TF_VER' => TF_VER,'CONSUL_VER' => CONSUL_VER, 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
       end
-      v1.vm.provision "shell", path: "scripts/setupPrimVaultServer.sh", env: { 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
+      v1.vm.provision "shell", path: "scripts/setupPrimVaultServer.sh", env: { 'TF_VER' => TF_VER, 'VAULT_VER' => VAULT_VER, 'HOST' => "v#{i}"}
     end
   end
 
