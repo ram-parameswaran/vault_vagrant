@@ -107,7 +107,7 @@ cluster_addr = "http://${IP_ADDRESS}:8201"
 ui = true 
 log_level="trace"
 
-license_path = "/vagrant/.license"
+license_path = "/vagrant/vault.license"
 
 #storage "raft" {
 #  path = "/opt/vault"
