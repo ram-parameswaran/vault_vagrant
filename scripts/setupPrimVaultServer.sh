@@ -7,7 +7,7 @@ VAULT_VERSION="$VAULT_VER"
 echo "$VAULT_VERSION"
 
 #installing terraform
-TERRAFORM_VERSION="1.4.4"
+TERRAFORM_VERSION="$TF_VER"
 echo "$TERRAFORM_VERSION"
 
 #if installing consul
@@ -26,8 +26,6 @@ apt-get update
 apt-get -y install unzip curl gnupg software-properties-common 
 apt-get -y install jq
 
-echo "Installing Terraform"
-#https://releases.hashicorp.com/terraform/1.3.7/terraform_1.3.7_linux_arm64.zip
 echo "check OS architecure" ; dpkg --print-architecture
 
 OS_ARCHITECTURE=$(dpkg --print-architecture)
@@ -109,11 +107,6 @@ log_level="trace"
 
 license_path = "/vagrant/vault.license"
 
-#storage "raft" {
-#  path = "/opt/vault"
-#  #node_id = "${HOST}"
-#}
-
 storage "consul" {
   address = "127.0.0.1:8500"
   path    = "vault/"
@@ -145,17 +138,13 @@ cluster_addr = "http://${IP_ADDRESS}:8201"
 ui = true
 log_level="trace"
 
-license_path = "/vagrant/.license"
+license_path = "/vagrant/vault.license"
 
 storage "raft" {
   path = "/opt/vault"
   #node_id = "${HOST}"
 }
 
-#storage "consul" {
-#  address = "127.0.0.1:8500"
-#  path    = "vault/"
-#}
 listener "tcp" {
   address       = "0.0.0.0:8200"
   tls_disable   = "true"
@@ -177,7 +166,7 @@ listener "tcp" {
 #}
 
 # this will disable perf standby even if the license allows
-disable_performance_standby = true
+#disable_performance_standby = true
 
 EOF
 fi
@@ -196,8 +185,6 @@ User=vault
 Group=vault
 PIDFile=/var/run/vault/vault.pid
 ExecStart=/usr/local/bin/vault server -config=/etc/vault/vault.hcl
-StandardOutput=file:/var/log/vault/vault.log
-StandardError=file:/var/log/vault/vault.log
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 KillSignal=SIGINT
@@ -209,40 +196,6 @@ StartLimitBurst=3
 LimitMEMLOCK=infinity
 [Install]
 WantedBy=multi-user.target
-EOF
-
-tee /etc/telegraf/telegraf.conf << EOF
-[global_tags]
-  index="vault-metrics"
-  datacenter = "testing"
-  role       = "vault-server"
-  cluster    = "vtl"
-
-# Agent options around collection interval, sizes, jitter and so on
-[agent]
-  interval = "10s"
-  round_interval = true
-  metric_batch_size = 1000
-  metric_buffer_limit = 10000
-  collection_jitter = "0s"
-  flush_interval = "10s"
-  flush_jitter = "0s"
-  precision = ""
-  hostname = ""
-  omit_hostname = false
-
-# An input plugin that listens on UDP/8125 for statsd compatible telemetry
-# messages using Datadog extensions which are emitted by Vault
-[[inputs.statsd]]
-  protocol = "udp"
-  service_address = ":8125"
-  metric_separator = "."
-  datadog_extensions = true
-
-##[[outputs.file]]
-##  files = ["stdout", "/tmp/metrics.out"]
-##  data_format = "json"
-##  json_timestamp_units = "1s"
 EOF
 
 
