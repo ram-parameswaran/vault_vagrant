@@ -65,7 +65,7 @@ cat > /etc/consul/config.d/consul.hcl << EOF
   "ui": true,
   "log_level": "TRACE",
   "enable_syslog": true,
-  "acl_enforce_version_8": false
+  "acl_enforce_version_8": false,
   "license_path" : "/vagrant/consul.license"
 }
 EOF
