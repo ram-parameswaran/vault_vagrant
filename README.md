@@ -2,14 +2,15 @@
 full raft/consul Vault
 
 # pre-reqs
-- To be able to run Enterprise versions of Vault and Consul, fetch Vault and Consul V2 licenses from [https://license.hashicorp.services/] for Consul and Vault and place them in the checked out folder and name them as `vault.license` and `consul.license`
+- To be able to run Enterprise versions of Vault and Consul, request license from [Sales](https://www.hashicorp.com/contact-sales?interest=vault).
+- Save the license files for Vault as `vault.license` and/or Consul as `consul.license` and place them in same folder as this README file.
 
 ### notes about the variables used for spining up Vault on Vagrant
 1. VAULT_NUM_INSTANCES - Number of Vault instances needed to be spun up
 2. CONSUL
-   - CONSUL_VERSION - Specify the version of Consul that needs to be installed.  - https://releases.hashicorp.com/consul/ - Defaults to 1.16.2+ent
+   - CONSUL_VER - Specify the version of Vault that needs to be installed - Should match the folder under - https://releases.hashicorp.com/consul/ - Defaults to 1.16.2+ent
    - STORAGE=consul - This needs to be specified when Vault needs to know Consul is the storage backend. Defaults to raft if no value is specified
-4. VAULT_VER - Specify the version of Consul that needs to be installed - Should match the folder under - https://releases.hashicorp.com/vault/ - Defaults to 1.15.0+ent if no value specified
+4. VAULT_VER - Specify the version of Vault that needs to be installed - Should match the folder under - https://releases.hashicorp.com/vault/ - Defaults to 1.15.0+ent if no value specified
 5. TF_VER - Specify the version of Terraform that needs to be installed - Should match the folder under - https://releases.hashicorp.com/terraform/ - Defaults to 1.6.1 if no value specified
 
 ### to spin up a vault node with Consul as the storage backend
