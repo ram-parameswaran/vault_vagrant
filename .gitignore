@@ -1,9 +1,11 @@
-## Vault binaries ##
-####################
 vault_builds/
 consul_builds/
+terraform_builds/
 certs/*
 .license
+*.license
+.hclic
+*.hclic
 .vagrant/
 .DS_store
 ubuntu-bionic-18.04-cloudimg-console.log
