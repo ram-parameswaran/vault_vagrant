@@ -4,7 +4,7 @@
 ### Define environment variables to pass on to provisioner
 
 # Define Vault version
-VAULT_VER = ENV['VAULT_VER'] || "1.15.2+ent"
+VAULT_VER = ENV['VAULT_VER'] || "1.15.3+ent"
 
 # Define Consul version
 CONSUL_VER = ENV['CONSUL_VER'] || "1.17.0+ent"
