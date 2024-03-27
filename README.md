@@ -1,3 +1,6 @@
+# Pre-req for Vault on Vagrant on Apple Silicion with VMWare fusion
+https://gist.github.com/sbailliez/2305d831ebcf56094fd432a8717bed93
+
 # vault_vagrant
 full raft/consul Vault
 
