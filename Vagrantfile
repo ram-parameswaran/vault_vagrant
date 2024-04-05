@@ -4,13 +4,13 @@
 ### Define environment variables to pass on to provisioner
 
 # Define Vault version
-VAULT_VER = ENV['VAULT_VER'] || "1.15.4+ent"
+VAULT_VER = ENV['VAULT_VER'] || "1.16.1+ent"
 
 # Define Consul version
-CONSUL_VER = ENV['CONSUL_VER'] || "1.17.0+ent"
+CONSUL_VER = ENV['CONSUL_VER'] || "1.18.1+ent"
 
 # Define Terraform version
-TF_VER = ENV['TF_VER'] || "1.6.5"
+TF_VER = ENV['TF_VER'] || "1.7.5"
 
 VAULT_NUM_INSTANCES = ENV['VAULT_NUM_INSTANCES'] || '1'
 STORAGE = ENV['STORAGE'] || ''
