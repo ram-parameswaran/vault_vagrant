@@ -10,7 +10,7 @@ VAULT_VER = ENV['VAULT_VER'] || "1.16.1+ent"
 CONSUL_VER = ENV['CONSUL_VER'] || "1.18.1+ent"
 
 # Define Terraform version
-TF_VER = ENV['TF_VER'] || "1.7.5"
+TF_VER = ENV['TF_VER'] || "1.8.0"
 
 VAULT_NUM_INSTANCES = ENV['VAULT_NUM_INSTANCES'] || '1'
 STORAGE = ENV['STORAGE'] || ''
