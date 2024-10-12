@@ -9,7 +9,14 @@ echo "Installing dependencies ..."
 apt-get -y install unzip curl
 
 echo "Installing Consul Enterprise version ..."
-CONSUL_VERSION="$CONSUL_VER"
+#CONSUL_VERSION="$CONSUL_VER"
+#echo "$CONSUL_VERSION"
+
+if [[ "$CONSUL_VER" == "" ]]; then
+  CONSUL_VERSION=$(curl -s https://releases.hashicorp.com/consul/ | grep -o 'href="/consul/[0-9]*\.[0-9]*\.[0-9]*/"' | sed 's/href="//;s/"//g' | sed 's|/consul/||;s|/$||' | sort -V | tail -n 1)
+else
+  CONSUL_VERSION="$CONSUL_VER"
+fi
 echo "$CONSUL_VERSION"
 
 OS_ARCHITECTURE=$(dpkg --print-architecture)

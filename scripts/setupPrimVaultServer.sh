@@ -3,11 +3,19 @@
 export PATH=$PATH:/usr/local/bin
 
 #installing vault
-VAULT_VERSION="$VAULT_VER"
+if [[ "$VAULT_VER" == "" ]]; then
+  VAULT_VERSION=$(curl -s https://releases.hashicorp.com/vault/ | grep -o 'href="/vault/[0-9]*\.[0-9]*\.[0-9]*/"' | sed 's/href="//;s/"//g' | sed 's|/vault/||;s|/$||' | sort -V | tail -n 1)+"ent"
+else
+  VAULT_VERSION="$VAULT_VER"
+fi
 echo "$VAULT_VERSION"
 
 #installing terraform
-TERRAFORM_VERSION="$TF_VER"
+if [[ "$TF_VER" == "" ]]; then
+  TERRAFORM_VERSION=$(curl -s https://releases.hashicorp.com/terraform/ | grep -o 'href="/terraform/[0-9]*\.[0-9]*\.[0-9]*/"' | sed 's/href="//;s/"//g' | sed 's|/terraform/||;s|/$||' | sort -V | tail -n 1)
+else
+  TERRAFORM_VERSION="$TF_VER"
+fi
 echo "$TERRAFORM_VERSION"
 
 #if installing consul
