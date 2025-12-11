@@ -145,7 +145,7 @@ api_addr = "http://${IP_ADDRESS}:8200"
 cluster_addr = "http://${IP_ADDRESS}:8201"
 ui = true
 log_level="trace"
-
+disable_mlock=false
 license_path = "/vagrant/vault.license"
 
 storage "raft" {
