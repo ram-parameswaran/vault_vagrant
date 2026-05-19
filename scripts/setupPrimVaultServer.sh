@@ -1,26 +1,29 @@
 #!/usr/bin/env bash
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 export PATH=$PATH:/usr/local/bin
 
 #installing vault
+VAULT_VER="${VAULT_VER:-}"
 if [[ "$VAULT_VER" == "" ]]; then
-  VAULT_VERSION=$(curl -s https://releases.hashicorp.com/vault/ | grep -o 'href="/vault/[0-9]*\.[0-9]*\.[0-9]*/"' | sed 's/href="//;s/"//g' | sed 's|/vault/||;s|/$||' | sort -V | tail -n 1)+"ent"
+  VAULT_VERSION=$(curl -sSf --max-time 30 https://releases.hashicorp.com/vault/ | grep -o 'href="/vault/[0-9]*\.[0-9]*\.[0-9]*/"' | sed 's/href="//;s/"//g' | sed 's|/vault/||;s|/$||' | sort -V | tail -n 1)+"ent"
 else
   VAULT_VERSION="$VAULT_VER"
 fi
 echo "$VAULT_VERSION"
 
 #installing terraform
+TF_VER="${TF_VER:-}"
 if [[ "$TF_VER" == "" ]]; then
-  TERRAFORM_VERSION=$(curl -s https://releases.hashicorp.com/terraform/ | grep -o 'href="/terraform/[0-9]*\.[0-9]*\.[0-9]*/"' | sed 's/href="//;s/"//g' | sed 's|/terraform/||;s|/$||' | sort -V | tail -n 1)
+  TERRAFORM_VERSION=$(curl -sSf --max-time 30 https://releases.hashicorp.com/terraform/ | grep -o 'href="/terraform/[0-9]*\.[0-9]*\.[0-9]*/"' | sed 's/href="//;s/"//g' | sed 's|/terraform/||;s|/$||' | sort -V | tail -n 1)
 else
   TERRAFORM_VERSION="$TF_VER"
 fi
 echo "$TERRAFORM_VERSION"
 
 #if installing consul
-STORAGE=$STORAGE_CONSUL
-echo $STORAGE
+STORAGE="${STORAGE_CONSUL:-}"
+echo "$STORAGE"
 
 echo "<REDACTED>"
 echo "<REDACTED>"
@@ -35,69 +38,100 @@ apt-get -y install unzip curl gnupg software-properties-common
 apt-get -y install jq
 
 echo "check OS architecure" ; dpkg --print-architecture
-
 OS_ARCHITECTURE=$(dpkg --print-architecture)
-arm64="arm64"
 
-echo "Installing terraform version ... $TERRAFORM_VERSION "
-
-if [[ $(curl -s https://releases.hashicorp.com/terraform/ | grep "$TERRAFORM_VERSION") && $(ls /vagrant/terraform_builds | grep -Fx "$TERRAFORM_VERSION") ]]; then
-  echo "Linking terraform build"
-  cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
-  echo "Installed terraform successfully, version ... $TERRAFORM_VERSION "
-  terraform version
-else
-  echo "In else, which means i will fetch the terraform installer from the interweb"
-  if curl -s -f -o /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip --create-dirs https://releases.hashicorp.com/terraform/"$TERRAFORM_VERSION"/terraform_"$TERRAFORM_VERSION"_linux_$OS_ARCHITECTURE.zip ; then
-    unzip /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip -d /vagrant/terraform_builds/"$TERRAFORM_VERSION"/
-    rm /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform.zip
-    cp -r /vagrant/terraform_builds/"$TERRAFORM_VERSION"/terraform /usr/local/bin/terraform;
-    terraform version
-    echo "Installed terraform successfully, version ... $TERRAFORM_VERSION "
-  else
-    echo "####### terraform version not found #########"
+# Unified function to install HashiCorp binaries
+install_hashicorp_binary() {
+  local PRODUCT=$1
+  local VERSION=$2
+  local BINARY_NAME=$(echo "$PRODUCT" | tr '[:upper:]' '[:lower:]')
+  local BUILD_DIR="/vagrant/${BINARY_NAME}_builds"
+  local CHECKSUM_URL="https://releases.hashicorp.com/${BINARY_NAME}/${VERSION}/${BINARY_NAME}_${VERSION}_SHA256SUMS"
+  
+  echo "Installing $PRODUCT version ... $VERSION"
+  
+  # Check if binary already exists locally
+  if [[ $(curl -sSf --max-time 10 https://releases.hashicorp.com/$BINARY_NAME/ | grep "$VERSION") && -f "$BUILD_DIR/$VERSION/$BINARY_NAME" ]]; then
+    echo "Linking $PRODUCT build"
+    cp -r "$BUILD_DIR/$VERSION/$BINARY_NAME" /usr/local/bin/$BINARY_NAME
+    chmod 755 /usr/local/bin/$BINARY_NAME
+    [[ "$PRODUCT" == "terraform" ]] && terraform version
+    return 0
   fi
-fi
-
-echo "Installing Vault enterprise version ... $VAULT_VERSION "
-if [[ $(curl -s https://releases.hashicorp.com/vault/ | grep "$VAULT_VERSION") && $(ls /vagrant/vault_builds | grep -Fx "$VAULT_VERSION") ]]; then
-  echo "Linking Vault build"
-  cp -r /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
-else
-  # https://releases.hashicorp.com/vault/1.9.4+ent/vault_1.9.4+ent_linux_arm64.zip
-  # https://releases.hashicorp.com/vault/1.11.2+ent/vault_1.11.2+ent_linux_arm64.zip
-  echo "In else, which means i will fetch the vault installer from the interweb"
-  if curl -s -f -o /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip --create-dirs https://releases.hashicorp.com/vault/"$VAULT_VERSION"/vault_"$VAULT_VERSION"_linux_$OS_ARCHITECTURE.zip ; then
-    unzip /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip -d /vagrant/vault_builds/"$VAULT_VERSION"/
-    rm /vagrant/vault_builds/"$VAULT_VERSION"/vault.zip
-    cp -r /vagrant/vault_builds/"$VAULT_VERSION"/vault /usr/local/bin/vault;
+  
+  # Download and install
+  echo "Downloading $PRODUCT installer from releases.hashicorp.com"
+  local ZIP_FILE="$BUILD_DIR/$VERSION/$BINARY_NAME.zip"
+  
+  if curl -sSf --max-time 300 -o "$ZIP_FILE" --create-dirs \
+    "https://releases.hashicorp.com/$BINARY_NAME/$VERSION/${BINARY_NAME}_${VERSION}_linux_${OS_ARCHITECTURE}.zip"; then
+    
+    # Download and verify checksum (CVE mitigation)
+    echo "Verifying checksum..."
+    if curl -sSf --max-time 30 -o "$BUILD_DIR/$VERSION/SHA256SUMS" "$CHECKSUM_URL"; then
+      cd "$BUILD_DIR/$VERSION"
+      if sha256sum --ignore-missing -c SHA256SUMS 2>/dev/null | grep -q "${BINARY_NAME}_${VERSION}_linux_${OS_ARCHITECTURE}.zip: OK"; then
+        echo "Checksum verification passed"
+      else
+        echo "####### Checksum verification failed! Possible tampering detected #########"
+        rm -f "$ZIP_FILE" SHA256SUMS
+        return 1
+      fi
+      cd - > /dev/null
+    else
+      echo "WARNING: Could not download checksums, skipping verification"
+    fi
+    
+    # Validate zip file
+    if unzip -t "$ZIP_FILE" > /dev/null 2>&1; then
+      echo "$PRODUCT zip file validated successfully"
+      unzip -o "$ZIP_FILE" -d "$BUILD_DIR/$VERSION/"
+      rm -f "$ZIP_FILE"
+      chmod 755 "$BUILD_DIR/$VERSION/$BINARY_NAME"
+      cp "$BUILD_DIR/$VERSION/$BINARY_NAME" /usr/local/bin/$BINARY_NAME
+      [[ "$PRODUCT" == "terraform" ]] && terraform version
+      echo "Installed $PRODUCT successfully, version ... $VERSION"
+    else
+      echo "####### Downloaded $PRODUCT zip file is corrupted, removing it #########"
+      rm -f "$ZIP_FILE"
+      echo "####### Please re-run provisioning to retry download #########"
+      return 1
+    fi
   else
-    echo "####### Vault version not found #########"
+    echo "####### $PRODUCT version not found or download failed #########"
+    return 1
   fi
-fi
+}
+
+# Install Terraform and Vault
+install_hashicorp_binary "terraform" "$TERRAFORM_VERSION"
+install_hashicorp_binary "vault" "$VAULT_VERSION"
 
 echo "Creating Vault service account ..."
-useradd -r -d /etc/vault -s /bin/sh vault
+if ! id -u vault > /dev/null 2>&1; then
+  useradd -r -d /etc/vault -s /bin/sh vault
+else
+  echo "Vault user already exists, skipping creation"
+fi
 
 echo "Creating directory structure ..."
 mkdir -p /etc/vault/pki
-mkdir /opt/vault
+mkdir -p /opt/vault
 chown vault:vault /opt/vault
 chown -R root:vault /etc/vault
 chmod -R 0750 /etc/vault
 
-mkdir /var/{lib,log}/vault
+mkdir -p /var/{lib,log}/vault
 chown vault:vault /var/{lib,log}/vault
 chmod 0750 /var/{lib,log}/vault
 
-sudo cp /vagrant/certs/ca.pem /usr/local/share/ca-certificates
-sudo cp /vagrant/certs/ca.pem /etc/ssl/certs/ca.pem
-sudo cat /vagrant/certs/ca.pem >> /etc/ssl/certs/ca-certificates.crt
+sudo cp -f /vagrant/certs/ca.pem /usr/local/share/ca-certificates/ca.pem 2>/dev/null || true
+sudo cp -f /vagrant/certs/ca.pem /etc/ssl/certs/ca.pem 2>/dev/null || true
 sudo update-ca-certificates --fresh
 
 NETWORK_INTERFACE=$(ls -1 /sys/class/net | grep -v lo | head -n 1)
 #NETWORK_INTERFACE=$(ls -1 /sys/class/net | grep -v lo | sort -r | head -n 1)
-echo "NETWORK_INTERFACE = $INTERFACE "
+echo "NETWORK_INTERFACE = $NETWORK_INTERFACE "
 IP_ADDRESS=$(ip address show $NETWORK_INTERFACE | awk '{print $2}' | egrep -o '([0-9]+\.){3}[0-9]+')
 echo "IP_ADDRESS = $IP_ADDRESS "
 HOSTNAME=$(hostname -s)
@@ -134,9 +168,9 @@ listener "tcp" {
 # need to export your aws key and secret to AWS_KEY_ID and AWS_SECRET respectivly
 #seal "awskms" {
 # region     = "ap-southeast-2"
-# access_key = "$AWS_KEY_ID"
-# secret_key = "$AWS_SECRET"
-# kms_key_id = "$AWS_KMS_KEY_ID"
+# access_key = "\$AWS_KEY_ID"
+# secret_key = "\$AWS_SECRET"
+# kms_key_id = "\$AWS_KMS_KEY_ID"
 #}
 EOF
 else
@@ -168,9 +202,9 @@ listener "tcp" {
 # need to export your aws key and secret to AWS_KEY_ID and AWS_SECRET respectivly
 #seal "awskms" {
 # region     = "ap-southeast-2"
-# access_key = "$AWS_KEY_ID"
-# secret_key = "$AWS_SECRET"
-# kms_key_id = "$AWS_KMS_KEY_ID"
+# access_key = "\$AWS_KEY_ID"
+# secret_key = "\$AWS_SECRET"
+# kms_key_id = "\$AWS_KMS_KEY_ID"
 #}
 
 # this will disable perf standby even if the license allows
@@ -193,7 +227,7 @@ User=vault
 Group=vault
 PIDFile=/var/run/vault/vault.pid
 ExecStart=/usr/local/bin/vault server -config=/etc/vault/vault.hcl
-ExecReload=/bin/kill -HUP $MAINPID
+ExecReload=/bin/kill -HUP \$MAINPID
 KillMode=process
 KillSignal=SIGINT
 Restart=on-failure
@@ -210,35 +244,99 @@ EOF
 systemctl daemon-reload
 systemctl enable vault
 systemctl restart vault
-vault -autocomplete-install
+vault -autocomplete-install 2>/dev/null || echo "Vault autocomplete already installed or failed"
 
-### Init vault server
-#if [[ "$HOSTNAME" == "v1" ]]; then
-  echo testing vault up
-  export VAULT_ADDR="http://127.0.0.1:8200"
-  export VAULT_CLUSTER_ADDR="http://127.0.0.1:8201"
-  vault status
-  sleep 10
-  sudo systemctl restart vault
-  sleep 20
-  #while [ $? -ne 2 ]; do echo "still testing"; vault status; done
-  vault operator init -key-shares=1 -key-threshold=1 -format=json > /home/vagrant/VaultCreds.json
-  sleep 10
-  vault status
-  sleep 5
-  cat /home/vagrant/VaultCreds.json
+### Init vault server or join cluster
+export VAULT_ADDR="http://127.0.0.1:8200"
+export VAULT_CLUSTER_ADDR="http://127.0.0.1:8201"
+
+# Determine if this is the first node (leader)
+IS_LEADER=false
+if [[ "$HOSTNAME" =~ ^v1$ ]] || [[ "$HOSTNAME" =~ ^v-dr-1$ ]] || [[ "$HOSTNAME" =~ ^v-pr-1$ ]]; then
+  IS_LEADER=true
+fi
+
+echo "Node: $HOSTNAME, Leader: $IS_LEADER"
+sleep 10
+sudo systemctl restart vault
+sleep 20
+
+if [ "$IS_LEADER" = true ]; then
+  echo "Initializing Vault cluster on leader node: $HOSTNAME"
+  
+  # Check if Vault is already initialized
+  if vault status 2>/dev/null | grep -q "Initialized.*true"; then
+    echo "Vault is already initialized, skipping initialization"
+    if [ ! -f /home/vagrant/VaultCreds.json ] && [ -f /vagrant/VaultCreds.json ]; then
+      cp /vagrant/VaultCreds.json /home/vagrant/VaultCreds.json
+    fi
+  else
+    vault operator init -key-shares=1 -key-threshold=1 -format=json > /home/vagrant/VaultCreds.json
+    sleep 10
+    
+    # Add leader IP to credentials file
+    LEADER_IP="$IP_ADDRESS"
+    jq --arg leader_ip "$LEADER_IP" '. + {leader_ip: $leader_ip}' /home/vagrant/VaultCreds.json > /home/vagrant/VaultCreds.tmp.json
+    mv /home/vagrant/VaultCreds.tmp.json /home/vagrant/VaultCreds.json
+    
+    # Copy credentials to shared location for follower nodes
+    cp /home/vagrant/VaultCreds.json /vagrant/VaultCreds.json
+  fi
+  
   export VAULT_UNSEAL_KEY=$(cat /home/vagrant/VaultCreds.json | jq -r .unseal_keys_b64[0])
-  vault operator unseal $VAULT_UNSEAL_KEY
-  #cp -r /home/vagrant/VaultCreds.json /vagrant/VaultCreds.json.${IP_ADDRESS}
+  vault operator unseal "$VAULT_UNSEAL_KEY"
   sleep 5
-  echo 'export VAULT_ADDR="http://127.0.0.1:8200" ; export VAULT_UNSEAL_KEY=$(cat /home/vagrant/VaultCreds.json | jq -r .unseal_keys_b64[0]) ; export VAULT_RAFT_AUTOPILOT_DISABLE=true ; export VAULT_TOKEN=$(cat /home/vagrant/VaultCreds.json | jq -r .root_token)' | tee /etc/profile.d/vault.sh
+  
   export VAULT_TOKEN=$(cat /home/vagrant/VaultCreds.json | jq -r .root_token)
-  vault login $(cat /home/vagrant/VaultCreds.json | jq -r .root_token)
+  echo 'export VAULT_ADDR="http://127.0.0.1:8200" ; export VAULT_UNSEAL_KEY=$(cat /home/vagrant/VaultCreds.json | jq -r .unseal_keys_b64[0]) ; export VAULT_RAFT_AUTOPILOT_DISABLE=true ; export VAULT_TOKEN=$(cat /home/vagrant/VaultCreds.json | jq -r .root_token)' | tee /etc/profile.d/vault.sh
+  vault login "$VAULT_TOKEN"
   vault status
-#else
- #echo "HOSTNAME = $HOSTNAME vault being launched as a follower"
- #vault status
-#fi
+  
+  echo "Leader node initialized successfully at IP: $LEADER_IP"
+else
+  echo "Joining Vault cluster as follower node: $HOSTNAME"
+  
+  # Wait for leader credentials to be available
+  RETRY_COUNT=0
+  MAX_RETRIES=30
+  while [ ! -f /vagrant/VaultCreds.json ] && [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
+    echo "Waiting for leader initialization... ($RETRY_COUNT/$MAX_RETRIES)"
+    sleep 10
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+  done
+  
+  if [ ! -f /vagrant/VaultCreds.json ]; then
+    echo "ERROR: Leader credentials not found after waiting. Cannot join cluster."
+    exit 1
+  fi
+  
+  # Get leader IP from credentials file
+  LEADER_IP=$(cat /vagrant/VaultCreds.json | jq -r .leader_ip)
+  
+  if [ -z "$LEADER_IP" ] || [ "$LEADER_IP" = "null" ]; then
+    echo "ERROR: Leader IP not found in credentials file"
+    exit 1
+  fi
+  
+  echo "Leader IP from credentials: $LEADER_IP"
+  
+  # Join the Raft cluster
+  export VAULT_TOKEN=$(cat /vagrant/VaultCreds.json | jq -r .root_token)
+  vault operator raft join "http://${LEADER_IP}:8200"
+  sleep 5
+  
+  # Unseal the follower node
+  export VAULT_UNSEAL_KEY=$(cat /vagrant/VaultCreds.json | jq -r .unseal_keys_b64[0])
+  vault operator unseal "$VAULT_UNSEAL_KEY"
+  sleep 5
+  
+  # Copy credentials locally
+  cp /vagrant/VaultCreds.json /home/vagrant/VaultCreds.json
+  echo 'export VAULT_ADDR="http://127.0.0.1:8200" ; export VAULT_UNSEAL_KEY=$(cat /home/vagrant/VaultCreds.json | jq -r .unseal_keys_b64[0]) ; export VAULT_RAFT_AUTOPILOT_DISABLE=true ; export VAULT_TOKEN=$(cat /home/vagrant/VaultCreds.json | jq -r .root_token)' | tee /etc/profile.d/vault.sh
+  
+  vault status
+  echo "Follower node joined cluster successfully using leader IP: $LEADER_IP"
+fi
 
 
 ## print servers IP address
