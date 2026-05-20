@@ -116,6 +116,7 @@ fi
 
 echo "Creating directory structure ..."
 mkdir -p /etc/vault/pki
+mkdir -p /etc/vault/plugin
 mkdir -p /opt/vault
 chown vault:vault /opt/vault
 chown -R root:vault /etc/vault
@@ -146,8 +147,8 @@ api_addr = "http://${IP_ADDRESS}:8200"
 cluster_addr = "http://${IP_ADDRESS}:8201"
 ui = true 
 log_level="trace"
-
 license_path = "/vagrant/vault.license"
+plugin_dir = "/etc/vault/plugin"
 
 storage "consul" {
   address = "127.0.0.1:8500"
@@ -181,6 +182,7 @@ ui = true
 log_level="trace"
 disable_mlock=false
 license_path = "/vagrant/vault.license"
+plugin_dir = "/etc/vault/plugin"
 
 storage "raft" {
   path = "/opt/vault"
